@@ -34,20 +34,20 @@ The file follows the following format:
         3) Draw the shape to the screen
         4) Clear the temporary matrix
 
-     sphere: add a sphere -
-             takes 4 arguemnts (cx, cy, cz, r)
-     torus: add a torus to the polygon matrix -
-            takes 5 arguemnts (cx, cy, cz, r1, r2)
-     box: add a rectangular prism -
-          takes 6 arguemnts (x, y, z, width, height, depth)
-     circle: add a circle -
-             takes 4 arguments (cx, cy, cz, r)
+     sphere:  add a sphere -
+              takes 4 arguemnts (cx, cy, cz, r)
+     torus:   add a torus to the polygon matrix -
+              takes 5 arguemnts (cx, cy, cz, r1, r2)
+     box:     add a rectangular prism -
+              takes 6 arguemnts (x, y, z, width, height, depth)
+     circle:  add a circle -
+              takes 4 arguments (cx, cy, cz, r)
      hermite: add a hermite curve -
               takes 8 arguments (x0, y0, x1, y1, rx0, ry0, rx1, ry1)
-     bezier: add a bezier curve -
-             takes 8 arguments (x0, y0, x1, y1, x2, y2, x3, y3)
-     line: add a line to the edge matrix -
-           takes 6 arguemnts (x0, y0, z0, x1, y1, z1)
+     bezier:  add a bezier curve -
+              takes 8 arguments (x0, y0, x1, y1, x2, y2, x3, y3)
+     line:    add a line to the edge matrix -
+              takes 6 arguemnts (x0, y0, z0, x1, y1, z1)
 
      scale: create a scale matrix,
             then multiply the current top of the coordinate system stack -
@@ -109,71 +109,81 @@ void parse_file ( char * filename,
     int step = 100;
     int step_3d = 10;
 
-    if ( strncmp(line, "box", strlen(line)) == 0 ) {
+    stack cstack = new_stack();
+
+    if ( strncmp(line, "pop", strlen(line)) == 0 ) {
+      pop(cstack);
+    }
+    else if ( strncmp(line, "push", strlen(line)) == 0 ) {
+      push(peek(cstack)); // see if this works??
+    }
+
+    else if ( strncmp(line, "box", strlen(line)) == 0 ||
+	      strncmp(line, "sphere", strlen(line)) == 0 ||
+	      strncmp(line, "torus", strlen(line)) == 0 ) {
       fgets(line, sizeof(line), f);
-      //printf("BOX\t%s", line);
-
-      sscanf(line, "%lf %lf %lf %lf %lf %lf",
-             xvals, yvals, zvals,
-             xvals+1, yvals+1, zvals+1);
-      add_box(polygons, xvals[0], yvals[0], zvals[0],
-              xvals[1], yvals[1], zvals[1]);
-    }//end of box
-
-    else if ( strncmp(line, "sphere", strlen(line)) == 0 ) {
-      fgets(line, sizeof(line), f);
-      //printf("SPHERE\t%s", line);
-
-      sscanf(line, "%lf %lf %lf %lf",
-             xvals, yvals, zvals, &r);
-      add_sphere( polygons, xvals[0], yvals[0], zvals[0], r, step_3d);
-    }//end of sphere
-
-    else if ( strncmp(line, "torus", strlen(line)) == 0 ) {
-      fgets(line, sizeof(line), f);
-      //printf("torus\t%s", line);
-
-      sscanf(line, "%lf %lf %lf %lf %lf",
-             xvals, yvals, zvals, &r, &r1);
-      add_torus(polygons, xvals[0], yvals[0], zvals[0], r, r1, step_3d);
-    }//end of torus
+      
+      if ( strncmp(line, "box", strlen(line)) == 0 ) {
+	//printf("BOX\t%s", line);
+	sscanf(line, "%lf %lf %lf %lf %lf %lf",
+	       xvals, yvals, zvals,
+	       xvals+1, yvals+1, zvals+1);
+	add_box(polygons, xvals[0], yvals[0], zvals[0],
+		xvals[1], yvals[1], zvals[1]);
+      }
+      else if ( strncmp(line, "sphere", strlen(line)) == 0 ) {
+	//printf("SPHERE\t%s", line);
+	sscanf(line, "%lf %lf %lf %lf",
+	       xvals, yvals, zvals, &r);
+	add_sphere( polygons, xvals[0], yvals[0], zvals[0], r, step_3d);	
+      }
+      else {
+	//printf("TORUS\t%s", line);
+	sscanf(line, "%lf %lf %lf %lf %lf",
+	       xvals, yvals, zvals, &r, &r1);
+	add_torus(polygons, xvals[0], yvals[0], zvals[0], r, r1, step_3d);	
+      }      
+      matrix_mult( peek(cstack), polygons);
+      draw_polygons(polygons, s, c);
+      polygons->lastcol = 0;
+    }//end of 3d shapes
 
     else if ( strncmp(line, "circle", strlen(line)) == 0 ) {
       fgets(line, sizeof(line), f);
       //printf("CIRCLE\t%s", line);
-
       sscanf(line, "%lf %lf %lf %lf",
              xvals, yvals, zvals, &r);
       add_circle( edges, xvals[0], yvals[0], zvals[0], r, step);
+      matrix_mult(peek(cstack), edges);
+      draw_lines(edges, s, c);
+      edges->lastcol = 0;
     }//end of circle
 
     else if ( strncmp(line, "hermite", strlen(line)) == 0 ||
               strncmp(line, "bezier", strlen(line)) == 0 ) {
-      if (strncmp(line, "hermite", strlen(line)) == 0 )
-        type = HERMITE;
-      else
-        type = BEZIER;
+      if (strncmp(line, "hermite", strlen(line)) == 0 ) type = HERMITE;
+      else type = BEZIER;
       fgets(line, sizeof(line), f);
       //printf("CURVE\t%s", line);
 
       sscanf(line, "%lf %lf %lf %lf %lf %lf %lf %lf",
              xvals, yvals, xvals+1, yvals+1,
              xvals+2, yvals+2, xvals+3, yvals+3);
-      /* printf("%lf %lf %lf %lf %lf %lf %lf %lf\n", */
-      /* 	     xvals[0], yvals[0], */
-      /* 	     xvals[1], yvals[1], */
-      /* 	     xvals[2], yvals[2], */
-      /* 	     xvals[3], yvals[3]); */
+      /* printf("%lf %lf %lf %lf %lf %lf %lf %lf\n",
+      	     xvals[0], yvals[0], xvals[1], yvals[1],
+       	     xvals[2], yvals[2], xvals[3], yvals[3]); */
 
       //printf("%d\n", type);
       add_curve( edges, xvals[0], yvals[0], xvals[1], yvals[1],
                  xvals[2], yvals[2], xvals[3], yvals[3], step, type);
+      matrix_mult(peek(cstack), edges);
+      draw_lines(edges, s, c);
+      edges->lastcol = 0;
     }//end of curve
 
     else if ( strncmp(line, "line", strlen(line)) == 0 ) {
       fgets(line, sizeof(line), f);
       //printf("LINE\t%s", line);
-
       sscanf(line, "%lf %lf %lf %lf %lf %lf",
              xvals, yvals, zvals,
              xvals+1, yvals+1, zvals+1);
@@ -182,6 +192,9 @@ void parse_file ( char * filename,
         xvals[1], yvals[1], zvals[1]) */
       add_edge(edges, xvals[0], yvals[0], zvals[0],
                xvals[1], yvals[1], zvals[1]);
+      matrix_mult(peek(cstack), edges);
+      draw_lines(edges, s, c);
+      edges->lastcol = 0;
     }//end line
 
     else if ( strncmp(line, "scale", strlen(line)) == 0 ) {
