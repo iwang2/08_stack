@@ -117,36 +117,36 @@ void parse_file ( char * filename,
     else if ( strncmp(line, "push", strlen(line)) == 0 ) {
       push(cstack);
     }
-    
-    // ~~~~~~~ 3D SHAPES ~~~~~~
-    else if ( strncmp(line, "box", strlen(line)) == 0 ||
-	      strncmp(line, "sphere", strlen(line)) == 0 ||
-	      strncmp(line, "torus", strlen(line)) == 0 ) {
-      fgets(line, sizeof(line), f);      
-      if ( strncmp(line, "box", strlen(line)) == 0 ) {
-	//printf("BOX\t%s", line);
-	sscanf(line, "%lf %lf %lf %lf %lf %lf",
-	       xvals, yvals, zvals,
-	       xvals+1, yvals+1, zvals+1);
-	add_box(polygons, xvals[0], yvals[0], zvals[0],
-		xvals[1], yvals[1], zvals[1]);
-      }
-      else if ( strncmp(line, "sphere", strlen(line)) == 0 ) {
-	//printf("SPHERE\t%s", line);
-	sscanf(line, "%lf %lf %lf %lf",
-	       xvals, yvals, zvals, &r);
-	add_sphere(polygons, xvals[0], yvals[0], zvals[0], r, step_3d);
-      }
-      else {
-	//printf("TORUS\t%s", line);
-	sscanf(line, "%lf %lf %lf %lf %lf",
-	       xvals, yvals, zvals, &r, &r1);
-	add_torus(polygons, xvals[0], yvals[0], zvals[0], r, r1, step_3d);
-      }      
+
+    else if ( strncmp(line, "box", strlen(line)) == 0 ) {
+      //printf("BOX\t%s", line);
+      fgets(line, sizeof(line), f);
+      sscanf(line, "%lf %lf %lf %lf %lf %lf",
+	     xvals, yvals, zvals, xvals+1, yvals+1, zvals+1);
+      add_box(polygons, xvals[0], yvals[0], zvals[0],
+	      xvals[1], yvals[1], zvals[1]);      
       matrix_mult( peek(cstack), polygons );
       draw_polygons(polygons, s, c);
       polygons->lastcol = 0;
-    }// ~~~~~ 3D SHAPES ~~~~~~
+    }
+    else if ( strncmp(line, "sphere", strlen(line)) == 0 ) {
+      //printf("SPHERE\t%s", line);
+      fgets(line, sizeof(line), f);
+      sscanf(line, "%lf %lf %lf %lf", xvals, yvals, zvals, &r);
+      add_sphere(polygons, xvals[0], yvals[0], zvals[0], r, step_3d);
+      matrix_mult( peek(cstack), polygons );
+      draw_polygons(polygons, s, c);
+      polygons->lastcol = 0;
+    }
+    else if ( strncmp(line, "torus", strlen(line)) == 0) {
+      //printf("TORUS\t%s", line);
+      fgets(line, sizeof(line), f);
+      sscanf(line, "%lf %lf %lf %lf %lf", xvals, yvals, zvals, &r, &r1);
+      add_torus(polygons, xvals[0], yvals[0], zvals[0], r, r1, step_3d);
+      matrix_mult( peek(cstack), polygons );
+      draw_polygons(polygons, s, c);
+      polygons->lastcol = 0;
+    }
 
     else if ( strncmp(line, "circle", strlen(line)) == 0 ) {
       fgets(line, sizeof(line), f);
@@ -195,32 +195,35 @@ void parse_file ( char * filename,
       edges->lastcol = 0;
     }//end line
 
-    // TRANSFORMATIONS
-    else if ( strncmp(line, "scale", strlen(line)) == 0 ||
-	      strncmp(line, "move", strlen(line)) == 0 ||
-	      strncmp(line, "rotate", strlen(line)) == 0 ) {
+    else if ( strncmp(line, "scale", strlen(line)) == 0 ) {
+      //printf("SCALE\t%s", line);
       fgets(line, sizeof(line), f);
-      if ( strncmp(line, "scale", strlen(line)) == 0 ) {
-	//printf("SCALE\t%s", line);
-	sscanf(line, "%lf %lf %lf", xvals, yvals, zvals);
-	tmp = make_scale( xvals[0], yvals[0], zvals[0]);
-      }//end scale
-      else if ( strncmp(line, "move", strlen(line)) == 0 ) {
-	//printf("MOVE\t%s", line);
-	sscanf(line, "%lf %lf %lf", xvals, yvals, zvals);
-	tmp = make_translate( xvals[0], yvals[0], zvals[0]);
-      }//end translate
-      else {
-	//printf("ROTATE\t%s", line);
-	sscanf(line, "%c %lf", &axis, &theta);
-	theta = theta * (M_PI / 180);
-	if ( axis == 'x' ) tmp = make_rotX( theta );
-	else if ( axis == 'y' ) tmp = make_rotY( theta );
-	else tmp = make_rotZ( theta );
-      }//end rotate
+      sscanf(line, "%lf %lf %lf", xvals, yvals, zvals);
+      tmp = make_scale( xvals[0], yvals[0], zvals[0]);
       matrix_mult(peek(cstack), tmp);
       copy_matrix(tmp, peek(cstack));
-    }
+    }//end scale
+    
+    else if ( strncmp(line, "move", strlen(line)) == 0 ) {
+      //printf("MOVE\t%s", line);
+      fgets(line, sizeof(line), f);
+      sscanf(line, "%lf %lf %lf", xvals, yvals, zvals);
+      tmp = make_translate( xvals[0], yvals[0], zvals[0]);
+      matrix_mult(peek(cstack), tmp);
+      copy_matrix(tmp, peek(cstack));
+    }//end translate
+    
+    else if ( strncmp(line, "rotate", strlen(line)) == 0 ) {
+      //printf("ROTATE\t%s", line);
+      fgets(line, sizeof(line), f);
+      sscanf(line, "%c %lf", &axis, &theta);
+      theta = theta * (M_PI / 180);
+      if ( axis == 'x' ) tmp = make_rotX( theta );
+      else if ( axis == 'y' ) tmp = make_rotY( theta );
+      else tmp = make_rotZ( theta );
+      matrix_mult(peek(cstack), tmp);
+      copy_matrix(tmp, peek(cstack));
+    }//end rotate
     
     else if ( strncmp(line, "display", strlen(line)) == 0 ) {
       //printf("DISPLAY\t%s", line);
