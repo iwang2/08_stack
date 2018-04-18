@@ -29,7 +29,7 @@ stack.o: stack.c stack.h matrix.h
 	$(CC) $(CFLAGS) -c stack.c
 
 run: all
-	./main script
+	./main thing
 
 clean:
 	rm main
